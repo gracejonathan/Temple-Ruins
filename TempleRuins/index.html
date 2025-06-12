@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempleRuins</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background-color: #121213; 
+            color: #d7dadc; 
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .grid-sections {
+            display: grid;
+            grid-template-columns: minmax(0, 150px) minmax(0, 150px) minmax(0, 150px);
+            grid-template-rows: auto auto auto auto;
+            gap: 5px;
+            width: 100%;
+            max-width: 460px;
+            align-items: start;
+            margin-bottom: 5px;
+        }
+        h1 {
+            font-size: 20px;
+            color: #ffffff;
+            margin: 5px 0;
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+        h2 {
+            font-size: 14px;
+            color: #ffffff;
+            margin: 2px 0;
+        }
+        .section { 
+            margin: 2px; 
+        }
+        .dice { 
+            display: inline-block; 
+            margin: 1px; 
+            padding: 0; 
+            width: 24px; 
+            height: 24px; 
+            background: transparent; 
+            box-sizing: border-box; 
+            border: 1px solid #3a3a3c; 
+            cursor: pointer; 
+        }
+        .dice.rolling {
+            animation: rollDice 0.5s ease-in-out 2;
+            background: #2f2f31; 
+        }
+        .dice.selected {
+            border-color: #d7dadc;
+        }
+        .level-1 { background-color: #D4A017; }
+        .level-2 { background-color: #3A6F3A; }
+        .level-3 { background-color: #8C2F1F; }
+        .level-4 { background-color: #B8860B; }
+        .level-5 { background-color: #4A2C2A; }
+        .level-6 { background-color: #5A7D9A; }
+        .temple-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+        .temple-pyramid {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            gap: 0; 
+            width: 100%;
+            max-width: 100%;
+        }
+        .pyramid-row {
+            display: flex;
+            justify-content: center; 
+            height: calc(100vw / 15); /* Dynamic height based on width */
+            max-height: 32px;
+            width: 100%;
+        }
+        .dice svg {
+            width: 100%;
+            height: 100%;
+        }
+        .row-1 { max-width: calc(100vw * 5 / 15); }
+        .row-2 { max-width: calc(100vw * 6 / 15); }
+        .row-3 { max-width: calc(100vw * 7 / 15); }
+        .row-4 { max-width: calc(100vw * 8 / 15); }
+        .row-5 { max-width: calc(100vw * 9 / 15); }
+        .row-6 { max-width: calc(100vw * 10 / 15); }
+        button { 
+            margin: 2px; 
+            padding: 5px 10px; 
+            cursor: pointer; 
+            background-color: #818384; 
+            border: none;
+            border-radius: 3px;
+            color: #ffffff;
+            font-size: 10px;
+            text-transform: uppercase;
+            transition: background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #565758; 
+        }
+        button:disabled { 
+            cursor: not-allowed; 
+            opacity: 0.5; 
+            background-color: #3a3a3c; 
+        }
+        #saved-dice {
+            margin: 2px; 
+            padding: 2px;
+            border: 1px solid #d7dadc; 
+            border-radius: 3px;
+            display: inline-block;
+            min-width: 60px; 
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            margin: 2px;
+            grid-column: 1;
+            grid-row: 2;
+        }
+        .dropdown-btn {
+            background-color: #818384;
+            color: #ffffff;
+            padding: 5px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .dropdown-btn:hover {
+            background-color: #565758;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #2f2f31;
+            min-width: 120px;
+            max-width: 150px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+            z-index: 3;
+            border-radius: 3px;
+            text-align: left;
+            padding: 5px;
+        }
+        .dropdown.active .dropdown-content {
+            display: block;
+        }
+        .dropdown-content p {
+            margin: 5px 0;
+            color: #d7dadc;
+            font-size: 10px;
+        }
+        #blackout {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 1;
+        }
+        .temple-outline {
+            border: 2px solid #000000;
+            padding: 2px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #final-score {
+            position: relative;
+            z-index: 2;
+            margin: 2px 0;
+            font-size: 14px;
+            color: #ffffff;
+        }
+        #restart-btn {
+            display: none;
+            position: relative;
+            z-index: 2;
+            margin: 2px;
+        }
+        @keyframes rollDice {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(10deg) scale(1.1); }
+            50% { transform: rotate(0deg) scale(1); }
+            75% { transform: rotate(-10deg) scale(1.1); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        #explore-btn {
+            background-image: url(https://cdn.glitch.global/1aa64f6e-098f-49cc-b002-c71e3e0605cd/Indy.png?v=1744375908158);
+            background-size: 20px 20px;
+            background-position: 5px center;
+            background-repeat: no-repeat;
+            padding-left: 30px;
+        }
+        #exchange-btn {
+            background-image: url(https://cdn.glitch.global/1aa64f6e-098f-49cc-b002-c71e3e0605cd/Convert.png?v=1744375403522);
+            background-size: 20px 20px;
+            background-position: 5px center;
+            background-repeat: no-repeat;
+            padding-left: 30px;
+        }
+        #reroll-btn {
+            background-image: url(https://cdn.glitch.global/1aa64f6e-098f-49cc-b002-c71e3e0605cd/REROLL.png?v=1744366202499);
+            background-size: 20px 20px;
+            background-position: 5px center;
+            background-repeat: no-repeat;
+            padding-left: 30px;
+        }
+        #turn-info {
+            grid-column: 2;
+            grid-row: 2;
+            font-size: 12px;
+            margin: 2px;
+        }
+        #saved-dice-section {
+            grid-column: 1;
+            grid-row: 3;
+        }
+        #current-roll-section {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        #buttons-section {
+            grid-column: 3;
+            grid-row: 3;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #reserve-section {
+            grid-column: 1;
+            grid-row: 4;
+        }
+        #discard-section {
+            grid-column: 2;
+            grid-row: 4;
+        }
+        #score-section {
+            grid-column: 3;
+            grid-row: 4;
+        }
+        @media screen and (max-width: 768px) {
+            .grid-sections {
+                grid-template-columns: minmax(0, 120px) minmax(0, 120px) minmax(0, 120px);
+                max-width: 370px;
+            }
+            .pyramid-row {
+                height: calc(100vw / 15);
+                max-height: 28px;
+            }
+            .row-1 { max-width: calc(100vw * 5 / 15); }
+            .row-2 { max-width: calc(100vw * 6 / 15); }
+            .row-3 { max-width: calc(100vw * 7 / 15); }
+            .row-4 { max-width: calc(100vw * 8 / 15); }
+            .row-5 { max-width: calc(100vw * 9 / 15); }
+            .row-6 { max-width: calc(100vw * 10 / 15); }
+        }
+        @media screen and (max-width: 480px) {
+            .grid-sections {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto auto auto;
+                max-width: 100%;
+            }
+            h1 { font-size: 16px; }
+            h2 { font-size: 12px; }
+            .dice {
+                width: 20px;
+                height: 20px;
+            }
+            .pyramid-row {
+                height: calc(100vw / 15);
+                max-height: 24px;
+            }
+            .row-1 { max-width: calc(100vw * 5 / 15); }
+            .row-2 { max-width: calc(100vw * 6 / 15); }
+            .row-3 { max-width: calc(100vw * 7 / 15); }
+            .row-4 { max-width: calc(100vw * 8 / 15); }
+            .row-5 { max-width: calc(100vw * 9 / 15); }
+            .row-6 { max-width: calc(100vw * 10 / 15); }
+            button { font-size: 8px; padding: 4px 8px; }
+            .dropdown-btn { font-size: 10px; padding: 4px 8px; }
+            .dropdown-content { min-width: 100px; max-width: 120px; }
+            .dropdown-content p { font-size: 8px; }
+            #turn-info { grid-column: 1; grid-row: 2; }
+            .dropdown { grid-column: 1; grid-row: 3; }
+            #saved-dice-section { grid-column: 1; grid-row: 4; }
+            #current-roll-section { grid-column: 1; grid-row: 5; }
+            #buttons-section { grid-column: 1; grid-row: 6; }
+            #reserve-section { grid-column: 1; grid-row: 7; }
+            #discard-section { grid-column: 1; grid-row: 8; }
+            #score-section { grid-column: 1; grid-row: 9; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="grid-sections">
+            <h1>Temple Ruins</h1>
+            <div class="dropdown">
+                <button class="dropdown-btn">Help</button>
+                <div class="dropdown-content">
+            
+        
+                     <h3>How to Play</h3>
+                  
+            <p>You are exploring newly discovered temple ruins. During this season’s dig you will have 8 turns to reveal its mysteries. How much of the ruin can you reveal?
+             Roll 6 dice each turn to prepare your gear to explore. 
+            <p>Click on dice you want to <b>SAVE</b> for this turn’s exploration.</p> 
+            <p>If you don’t have the right gear yet, <b>REROLL</b>. </p>
+            <p>If you think you might need something you can Save it before the Reroll and then put it back before Exploring.</p>
+            <p>Once your gear is ready, click on <b>EXPLORE</b> to reveal parts of the temple you have gear to explore.</p>
+            <p>The lowest level of the temple needs 1’s and to explore the next level two 1’s must be revealed before revealing a 2 on the second level. 
+            <p>The whole temple is revealed in pyramid fashion with each level increasing up to 6.</p>
+            <p>Any gear you did not save for exploring will be placed in the reserve for one turn.</p> 
+            <p>If you need one of these dice you can <b>EXCHANGE</b> it for a dice in your roll. Click on Exchange, then a dice in your roll and a dice in the reserve. That reserve dice will be saved and the dice from your roll will be placed in reserve. 
+            <p>Once you explore the dice in the reserve will be placed in discard and the unused dice in your roll will be the new reserve. 
+            </p>
+            <p>
+              
+            </p>
+            </p>
+            <h3>Rules</h3>
+            <p>
+              - <b>SAVE</b>: Click on dice in your roll to save/unsave dice.<br />
+              - <b>EXCHANGE</b>: Swap roll with reserve.<br />
+              - <b>EQUIP</b>: Reroll unsaved dice once.<br />
+              - <b>EXPLORE</b>: Place dice in temple.<br />
+              
+            </p>
+            <h3>Scoring</h3>
+            <p>
+              Score = sum of (dice × level). E.g., 3 dice on level 1 = 3 points, 2 dice on level 2 = 4 points, 1 dice on level 3 = 3 points for a total of 10 points.
+            </p>
+                <p>
+              - <b>Below 50</b>: Nubian Pyramid (Sudan).<br />
+              - <b>50-69</b>: Pyramid of the Moon (Mexico).<br />
+              - <b>70-89</b>: Pyramid of the Sun (Mexico).<br />
+              - <b>90-109</b>:Great Pyramid of Khufu (Egypt).<br />
+              - <b>110-140</b>:Great Pyramid of Cholula (Egypt).<br />
+              
+            </p>
+                </div>
+            </div>
+            <div class="section" id="turn-info">Turn: 1/8</div>
+            <div class="section" id="saved-dice-section">
+                <h2>Saved Dice</h2>
+                <div id="saved-dice"></div>
+            </div>
+            <div class="section" id="current-roll-section">
+                <h2>Current Roll</h2>
+                <div id="current-roll"></div>
+            </div>
+            <div class="section" id="buttons-section">
+                <button id="exchange-btn" onclick="toggleExchangeMode()" title="Swap dice" disabled>Exchange</button>
+                <button id="reroll-btn" onclick="rerollDice()" title="Reroll unsaved dice" disabled>Reroll</button>
+                <button id="explore-btn" onclick="exploreTemple()" title="Place dice in temple" disabled>Explore</button>
+            </div>
+            <div class="section" id="reserve-section">
+                <h2>Reserve</h2>
+                <div id="reserve"></div>
+            </div>
+            <div class="section" id="discard-section">
+                <h2>Discard</h2>
+                <div id="discard"></div>
+            </div>
+            <div class="section" id="score-section">
+                <h2>Score: <span id="score">0</span></h2>
+            </div>
+        </div>
+        <div class="section temple-section" id="temple-section">
+            <h2>Temple</h2>
+            <div class="temple-pyramid" id="temple"></div>
+            <div id="final-score"></div>
+            <button id="restart-btn" onclick="resetGame()">Restart</button>
+        </div>
+    </div>
+    <div id="blackout"></div>
+
+    <script>
+        let turn = 1;
+        const maxTurns = 8;
+        let currentRoll = [];
+        let savedDice = [];
+        let reserve = [];
+        let discard = [];
+        let temple = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+        const initialMaxDicePerLevel = { 1: 10, 2: 9, 3: 8, 4: 7, 5: 6, 6: 5 };
+        let hasRerolled = false;
+        let exchangeMode = false;
+        let diceToExchange = [];
+
+        const diceSVGs = {
+            empty: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/></svg>`,
+            bw1: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="12" cy="12" r="3" fill="white"/></svg>`,
+            bw2: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            bw3: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="12" cy="12" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            bw4: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="8" r="3" fill="white"/><circle cx="8" cy="16" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            bw5: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="8" r="3" fill="white"/><circle cx="12" cy="12" r="3" fill="white"/><circle cx="8" cy="16" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            bw6: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width23" height="23" fill="#000000" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="6" r="3" fill="white"/><circle cx="8" cy="12" r="3" fill="white"/><circle cx="8" cy="18" r="3" fill="white"/><circle cx="16" cy="6" r="3" fill="white"/><circle cx="16" cy="12" r="3" fill="white"/><circle cx="16" cy="18" r="3" fill="white"/></svg>`,
+            1: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="12" cy="12" r="3" fill="white"/></svg>`,
+            2: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            3: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="12" cy="12" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            4: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="8" r="3" fill="white"/><circle cx="8" cy="16" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            5: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="8" r="3" fill="white"/><circle cx="16" cy="8" r="3" fill="white"/><circle cx="12" cy="12" r="3" fill="white"/><circle cx="8" cy="16" r="3" fill="white"/><circle cx="16" cy="16" r="3" fill="white"/></svg>`,
+            6: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="transparent" stroke="#3a3a3c" stroke-width="1"/><circle cx="8" cy="6" r="3" fill="white"/><circle cx="8" cy="12" r="3" fill="white"/><circle cx="8" cy="18" r="3" fill="white"/><circle cx="16" cy="6" r="3" fill="white"/><circle cx="16" cy="12" r="3" fill="white"/><circle cx="16" cy="18" r="3" fill="white"/></svg>`,
+            solid: `<svg viewBox="0 0 24 24"><rect x="0.5" y="0.5" width="23" height="23" fill="#D4A017" stroke="#3a3a3c" stroke-width="1"/></svg>`
+        };
+
+        function startTurn() {
+            if (turn > maxTurns) {
+                endGame();
+                return;
+            }
+            currentRoll = Array(6).fill(0).map(() => Math.floor(Math.random() * 6) + 1);
+            savedDice = [];
+            hasRerolled = false;
+            exchangeMode = false;
+            diceToExchange = [];
+            const rollDiv = document.getElementById("current-roll");
+            rollDiv.innerHTML = Array(6).fill().map(() => `<span class="dice rolling">${diceSVGs.empty}</span>`).join("");
+            setTimeout(() => {
+                updateDisplay();
+                toggleButtons(true);
+            }, 500);
+        }
+
+        function toggleDice(index, fromSaved = false) {
+            if (exchangeMode) {
+                selectForExchange(index, fromSaved);
+                return;
+            }
+            if (fromSaved) {
+                if (index < 0 || index >= savedDice.length) return;
+                const die = savedDice[index];
+                savedDice.splice(index, 1);
+                currentRoll.push(die);
+            } else {
+                if (index < 0 || index >= currentRoll.length) return;
+                const die = currentRoll[index];
+                currentRoll.splice(index, 1);
+                savedDice.push(die);
+            }
+            updateDisplay();
+        }
+
+        function toggleExchangeMode() {
+            exchangeMode = !exchangeMode;
+            diceToExchange = [];
+            updateDisplay();
+            document.getElementById("exchange-btn").style.backgroundColor = exchangeMode ? "#565758" : "#818384";
+        }
+
+        function selectForExchange(index, isReserve = false) {
+            if (!exchangeMode) return;
+            const source = isReserve ? reserve : currentRoll;
+            if (index < 0 || index >= source.length) return;
+            diceToExchange.push({ value: source[index], isReserve, index });
+            updateDisplay();
+            if (diceToExchange.length === 2 && diceToExchange[0].isReserve !== diceToExchange[1].isReserve) {
+                performExchange();
+            }
+        }
+
+        function performExchange() {
+            const [dice1, dice2] = diceToExchange;
+            const rollIndex = dice1.isReserve ? dice2.index : dice1.index;
+            const reserveIndex = dice1.isReserve ? dice1.index : dice2.index;
+            const rollValue = currentRoll[rollIndex];
+            const reserveValue = reserve[reserveIndex];
+            currentRoll[rollIndex] = reserveValue;
+            reserve[reserveIndex] = rollValue;
+            savedDice.push(reserveValue);
+            currentRoll.splice(rollIndex, 1);
+            diceToExchange = [];
+            exchangeMode = false;
+            updateDisplay();
+            document.getElementById("exchange-btn").style.backgroundColor = "#818384";
+        }
+
+        function rerollDice() {
+            if (turn > maxTurns || hasRerolled) return;
+            hasRerolled = true;
+            const rollDiv = document.getElementById("current-roll");
+            rollDiv.innerHTML = currentRoll.map(() => `<span class="dice rolling">${diceSVGs.empty}</span>`).join("");
+            setTimeout(() => {
+                currentRoll = currentRoll.map(() => Math.floor(Math.random() * 6) + 1);
+                updateDisplay();
+                toggleButtons(true);
+            }, 500);
+        }
+
+        function exploreTemple() {
+            if (turn > maxTurns) return;
+            let playable = [...savedDice];
+            savedDice = [];
+            
+            playable.sort((a, b) => a - b);
+            for (let die of playable) {
+                let level = die;
+                if (canPlaceDie(level)) {
+                    temple[level].push(die);
+                } else {
+                    reserve.push(die);
+                }
+            }
+
+            discard = discard.concat(reserve);
+            reserve = [...currentRoll];
+            currentRoll = [];
+
+            turn++;
+            hasRerolled = false;
+            exchangeMode = false;
+            diceToExchange = [];
+            updateDisplay();
+            toggleButtons(false);
+            if (turn <= maxTurns) startTurn();
+            else endGame();
+        }
+
+        function getMaxDiceForLevel(level) {
+            if (level === 1) return 10;
+            let levelBelow = level - 1;
+            return Math.max(0, temple[levelBelow].length - 1);
+        }
+
+        function canPlaceDie(level) {
+            if (temple[level].length >= getMaxDiceForLevel(level)) return false;
+            if (level === 1) return true;
+            let levelBelow = level - 1;
+            return temple[levelBelow].length >= 2;
+        }
+
+        function calculateScore() {
+    let score = 0;
+    for (let level = 1; level <= 6; level++) {
+        score += temple[level].length * level;
+    }
+    return score;
+        }
+
+   function endGame() {
+    // 1. Calculate score FIRST
+    const score = calculateScore();
+    
+    // 2. Determine temple tier
+    let templeName, templeDescription, templeColor;
+    
+    if (score < 50) {
+        templeName = "Nubian Pyramid";
+        templeDescription = "Sudan - A modest beginning for any explorer";
+        templeColor = "#8B0000";
+    } 
+    else if (score < 70) {
+        templeName = "Pyramid of the Moon";
+        templeDescription = "Mexico - You've uncovered Teotihuacan's lunar secrets";
+        templeColor = "#CD5C5C";
+    }
+    else if (score < 90) {
+        templeName = "Pyramid of the Sun";
+        templeDescription = "Mexico - The Aztec gods acknowledge your efforts";
+        templeColor = "#FFA07A";
+    }
+    else if (score < 110) {
+        templeName = "Great Pyramid of Khufu";
+        templeDescription = "Egypt - A pharaoh-worthy discovery at Giza";
+        templeColor = "#D4A017";
+    }
+    else {
+        templeName = "Great Pyramid of Cholula";
+        templeDescription = "Mexico - The largest pyramid on Earth! Legendary!";
+        templeColor = "#FF8C00";
+    }
+
+    // 3. Build pyramid visualization
+    let templeHTML = "";
+    for (let row = 1; row <= 6; row++) {
+        let level = 7 - row;
+        let diceInLevel = temple[level];
+        let maxForRow = initialMaxDicePerLevel[level];
+        
+        let rowHTML = diceInLevel.map(() => 
+            `<span class="dice level-${level}">${diceSVGs.solid}</span>`
+        ).join("");
+        
+        for (let i = diceInLevel.length; i < maxForRow; i++) {
+            rowHTML += `<span class="dice" style="visibility: hidden;">${diceSVGs.empty}</span>`;
+        }
+        
+        templeHTML += `<div class="pyramid-row row-${row}">${rowHTML}</div>`;
+    }
+    
+    // 4. Update DOM ONCE
+    document.getElementById("final-score").innerHTML = `
+        <div class="temple-discovery" style="border-color: ${templeColor}">
+            <h2 style="color: ${templeColor}">Discovered: ${templeName}</h2>
+            <div class="temple-description">${templeDescription}</div>
+            <div class="temple-score">Final Score: <strong>${score}</strong></div>
+            ${score >= 110 ? '<div class="legendary">★ Legendary Explorer ★</div>' : ''}
+        </div>
+    `;
+    
+    document.getElementById("temple").innerHTML = templeHTML;
+    document.getElementById("temple").classList.add("temple-outline");
+    document.getElementById("blackout").style.display = "block";
+    document.getElementById("restart-btn").style.display = "inline-block";
+}
+        
+
+        function resetGame() {
+            turn = 1;
+            currentRoll = [];
+            savedDice = [];
+            reserve = [];
+            discard = [];
+            temple = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+            hasRerolled = false;
+            exchangeMode = false;
+            diceToExchange = [];
+            document.getElementById("score").textContent = "0";
+            document.getElementById("final-score").textContent = "";
+            document.getElementById("blackout").style.display = "none";
+            document.getElementById("temple").classList.remove("temple-outline");
+            document.getElementById("restart-btn").style.display = "none";
+            updateDisplay();
+            startTurn();
+        }
+
+        function updateDisplay() {
+            document.getElementById("turn-info").textContent = `Turn: ${turn}/${maxTurns}`;
+            document.getElementById("saved-dice").innerHTML = savedDice.length > 0 
+                ? savedDice.map((d, i) => `<span class="dice selected" onclick="toggleDice(${i}, true)">${diceSVGs['bw' + d]}</span>`).join("") 
+                : "None";
+            document.getElementById("current-roll").innerHTML = currentRoll.length > 0 
+                ? currentRoll.map((d, i) => `<span class="dice selected" onclick="toggleDice(${i})">${diceSVGs['bw' + d]}</span>`).join("") 
+                : "None";
+            document.getElementById("reserve").innerHTML = reserve.length > 0 
+                ? reserve.map((d, i) => `<span class="dice ${exchangeMode ? 'selected' : ''}" onclick="selectForExchange(${i}, true)">${diceSVGs['bw' + d]}</span>`).join("") 
+                : "None";
+            document.getElementById("discard").innerHTML = discard.length > 0 
+                ? discard.map(d => `<span class="dice">${diceSVGs['bw' + d]}</span>`).join("") 
+                : "None";
+
+            if (turn <= maxTurns) {
+                let templeHTML = "";
+                for (let row = 1; row <= 6; row++) {
+                    let level = 7 - row;
+                    let diceInLevel = temple[level];
+                    let maxForRow = initialMaxDicePerLevel[level];
+                    let rowHTML = diceInLevel.map(d => `<span class="dice level-${level}">${diceSVGs[d]}</span>`).join("");
+                    for (let i = diceInLevel.length; i < maxForRow; i++) {
+                        rowHTML += `<span class="dice">${diceSVGs.empty}</span>`;
+                    }
+                    templeHTML += `<div class="pyramid-row row-${row}">${rowHTML}</div>`;
+                }
+                document.getElementById("temple").innerHTML = templeHTML;
+            }
+
+            if (turn > maxTurns) {
+                document.getElementById("exchange-btn").disabled = true;
+                document.getElementById("reroll-btn").disabled = true;
+                document.getElementById("explore-btn").disabled = true;
+            }
+        }
+
+        function toggleButtons(enable) {
+            document.getElementById("exchange-btn").disabled = !enable || currentRoll.length === 0 || reserve.length === 0;
+            document.getElementById("reroll-btn").disabled = !enable || currentRoll.length === 0 || hasRerolled;
+            document.getElementById("explore-btn").disabled = !enable;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const dropdownBtn = document.querySelector(".dropdown-btn");
+            const dropdown = document.querySelector(".dropdown");
+            dropdownBtn.addEventListener("click", () => {
+                dropdown.classList.toggle("active");
+            });
+        });
+
+        startTurn();
+    </script>
+</body>
+</html>
